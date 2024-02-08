@@ -631,6 +631,7 @@ class Peer {
             this._lastProgress = 0;
             this._totalBytesReceived = 0;
             this._filesReceived = [];
+            this._byteLogs = [];
         }
         this._pendingRequest = null;
     }
@@ -655,6 +656,55 @@ class Peer {
 
     _sendReceiveConfirmation(bytesReceived) {
         this._sendMessage({type: 'receive-confirmation', bytesReceived: bytesReceived});
+
+        const bytesReceivedTotal = this._totalBytesReceived + bytesReceived;
+        this._addLog(bytesReceivedTotal);
+
+        if (this._byteLogs.length % 3 !== 0 || this._byteLogs.length < 10) return;
+
+        const speed = this._calculateSpeed();
+        const bytesLeft = this._acceptedRequest.totalSize - bytesReceivedTotal;
+        const timeLeftSeconds = Math.round(bytesLeft / speed / 1000);
+
+        console.debug(this._getSpeedString(speed), this._getTimeString(timeLeftSeconds))
+
+        if (this._byteLogs.length < 30) return;
+
+        // move running average
+        this._byteLogs = this._byteLogs.slice(3);
+    }
+    
+    _addLog(bytesReceivedTotal) {
+        this._byteLogs.push({
+            time: Date.now(),
+            bytesReceived: bytesReceivedTotal
+        });
+    }
+
+    _calculateSpeed() {
+        const timeDifferenceSeconds = (this._byteLogs[this._byteLogs.length - 1].time - this._byteLogs[0].time) / 1000;
+        const bytesDifferenceKB = (this._byteLogs[this._byteLogs.length - 1].bytesReceived - this._byteLogs[0].bytesReceived) / 1000;
+        return bytesDifferenceKB / timeDifferenceSeconds;
+    }
+
+    _getSpeedString(speedKBs) {
+        if (speedKBs >= 1000) {
+            let speedMBs = Math.round(speedKBs / 100) / 10;
+            return `${speedMBs} MB/s`; // e.g. "2.2 MB/s"
+        }
+
+        return `${speedKBs} KB/s`; // e.g. "522 KB/s"
+    }
+
+    _getTimeString(seconds) {
+        if (seconds >= 60) {
+            let minutes = Math.floor(seconds / 60);
+            let secondsLeft = seconds - minutes * 60;
+            return `${minutes} min ${secondsLeft}s`; // e.g. // "1min 20s"
+        }
+        else {
+            return `${seconds}s`; // e.g. "35s"
+        }
     }
 
     _abortTransfer() {
