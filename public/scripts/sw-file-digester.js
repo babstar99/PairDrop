@@ -44,5 +44,6 @@ async function onGetFile(fileName) {
 
     self.postMessage({type: "file", file: file});
     file = null;
-    // Todo: delete file from storage
+
+    await (await navigator.storage.getDirectory()).removeEntry(fileName);
 }
