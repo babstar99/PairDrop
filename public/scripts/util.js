@@ -85,6 +85,7 @@ const zipper = (() => {
     let zipWriter;
     return {
         createNewZipWriter() {
+            // Todo: put into service worker to save RAM (see https://github.com/gildas-lormeau/zip.js/discussions/392)
             zipWriter = new zip.ZipWriter(new zip.BlobWriter("application/zip"), { bufferedWrite: true, level: 0 });
         },
         addFile(file, options) {
